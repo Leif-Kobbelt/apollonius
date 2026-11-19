@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Apollonius-Kreis Explorer",
+  "short_name": "Apollonius",
+  "description": "Interaktive Lösungen des Apollonischen Berührproblems für drei Kreise",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1117",
+  "theme_color": "#181c27",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

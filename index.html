@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Apollonius-Kreis Explorer</title>
+<meta name="description" content="Interaktive Lösungen des Apollonischen Berührproblems für drei Kreise">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Apollonius">
+<meta name="theme-color" content="#181c27">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>
+:root {
+  --bg: #0f1117;
+  --panel: #181c27;
+  --border: rgba(255,255,255,0.08);
+  --text: #e8eaf0;
+  --muted: #8b93a5;
+  --font: 'Inter', system-ui, sans-serif;
+  --c1: #4f8ef7;
+  --c2: #f7874f;
+  --c3: #4fd98e;
+  --sol: #f0e060;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  height: 100%;
+  background: var(--bg);
+  color-scheme: dark;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Ränder für Notch und Dynamic Island im Querformat */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  /* Verhalten wie eine native App */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+button { touch-action: manipulation; }
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  /* Kopfzeile reicht unter die Statusleiste */
+  padding-top: calc(7px + env(safe-area-inset-top, 0px));
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+header::-webkit-scrollbar { display: none; }
+header h1 { font-size: 13px; font-weight: 600; color: var(--c1); white-space: nowrap; flex-shrink: 0; }
+.sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+.lbl { font-size: 11px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.sol-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.sol-btn {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: var(--font);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  white-space: nowrap;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.sol-btn:hover { border-color: var(--sol); color: var(--text); }
+.sol-btn.active { background: rgba(240,224,96,0.15); border-color: var(--sol); color: var(--sol); font-weight: 600; }
+.sol-btn.all-btn { padding: 3px 9px; }
+#resetBtn {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+#resetBtn:hover { color: var(--text); border-color: var(--muted); }
+#hyperBtn {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: var(--font);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+#hyperBtn:hover { border-color: #a78bfa; color: var(--text); }
+#hyperBtn.active { background: rgba(167,139,250,0.15); border-color: #a78bfa; color: #a78bfa; font-weight: 600; }
+#status {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 140px;
+}
+canvas {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  cursor: default;
+  touch-action: none;
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  padding: 5px 16px;
+  padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.leg-line { width: 18px; height: 2px; flex-shrink: 0; }
+.leg-hint { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+/* Finger statt Maus: größere Schaltflächen */
+@media (pointer: coarse) {
+  .sol-btn { min-height: 32px; padding: 4px 8px; font-size: 12px; }
+  #resetBtn, #hyperBtn { min-height: 32px; padding: 4px 12px; font-size: 12px; }
+}
+
+/* Smartphone hochkant: Kopfzeile auf mehrere Zeilen verteilen */
+@media (max-width: 700px) {
+  header { flex-wrap: wrap; row-gap: 6px; column-gap: 6px; overflow-x: visible; padding-left: 12px; padding-right: 12px; }
+  header .sep, header .lbl { display: none; }
+  header h1 { font-size: 15px; order: 0; }
+  #resetBtn { order: 1; margin-left: auto; }
+  #hyperBtn { order: 2; }
+  .sol-grid { order: 3; flex-basis: 100%; display: grid; grid-template-columns: 1.4fr repeat(8, 1fr); gap: 4px; }
+  .sol-btn { padding: 6px 0; }
+  #status { order: 4; flex-basis: 100%; min-width: 0; font-size: 12px; }
+  .legend { gap: 5px 12px; padding-left: 12px; padding-right: 12px; }
+  .leg-item { font-size: 11px; }
+  .leg-hint { margin-left: 0; flex-basis: 100%; }
+}
+
+/* Smartphone quer: Kopfzeile straffen, Status wandert in die Fußzeile */
+@media (orientation: landscape) and (max-height: 520px) {
+  header { gap: 6px; }
+  header .sep, header .lbl { display: none; }
+  .legend { gap: 4px 12px; }
+  .legend #status { margin-left: auto; min-width: 0; font-size: 12px; }
+  .leg-hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Apollonius-Kreis</h1>
+  <div class="sep"></div>
+  <span class="lbl">Lösung (ε₁ε₂ε₃):</span>
+  <div class="sol-grid" id="solGrid"></div>
+  <div class="sep"></div>
+  <button id="resetBtn">Reset</button>
+  <div class="sep"></div>
+  <button id="hyperBtn">Hyperbeln</button>
+  <div class="sep"></div>
+  <span id="status">Bereit</span>
+</header>
+
+<canvas id="canvas"></canvas>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:var(--c1)"></div>Kreis k₁</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--c2)"></div>Kreis k₂</div>
+  <div class="leg-item"><div class="leg-dot" style="background:var(--c3)"></div>Kreis k₃</div>
+  <div class="leg-item"><div class="leg-line" style="background:var(--sol)"></div>Apollonius-Lösung(en)</div>
+  <div class="leg-item" id="hyperLegend" style="display:none;">
+    <span style="display:inline-block;width:20px;border-top:2px dashed #a78bfa;vertical-align:middle;margin-right:3px;opacity:0.8;"></span>
+    <span style="color:#a78bfa;">Hyperbeln</span>
+    <span style="color:var(--muted);font-size:10px;margin-left:4px;">(Farbe = anderer Kreis)</span>
+  </div>
+  <div class="leg-item leg-hint" id="hint">
+    Mittelpunkt ziehen · Randpunkt ziehen = Radius ändern
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SIGNS = [
+  [+1,+1,+1], [+1,+1,-1], [+1,-1,+1], [-1,+1,+1],
+  [+1,-1,-1], [-1,+1,-1], [-1,-1,+1], [-1,-1,-1]
+];
+const SIGN_LABELS = SIGNS.map(s => s.map(x=>x>0?'+':'−').join(''));
+
+const COLORS = ['#4f8ef7','#f7874f','#4fd98e'];
+const SOL_COLOR = '#f0e060';
+const SOL_COLORS = [
+  '#f0e060','#f09060','#a0e060','#60c0f0',
+  '#d060f0','#f06090','#60f0b0','#c0c0c0'
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let W, H;
+let circles; // [{cx,cy,r}, ...]
+let activeSign = null; // null = all
+let drag = null; // {type:'center'|'radius', idx, ox,oy, startCx,startCy,startR}
+let showHyperbolas = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function defaultCircles() {
+  return [
+    { cx: W*0.35, cy: H*0.42, r: Math.min(W,H)*0.12 },
+    { cx: W*0.62, cy: H*0.38, r: Math.min(W,H)*0.09 },
+    { cx: W*0.50, cy: H*0.62, r: Math.min(W,H)*0.10 },
+  ];
+}
+
+// ── SOLUTION BUTTONS ──────────────────────────────────────────────────────────
+function buildSolGrid() {
+  const grid = document.getElementById('solGrid');
+  grid.innerHTML = '';
+
+  // "Alle" button
+  const allBtn = document.createElement('button');
+  allBtn.className = 'sol-btn all-btn' + (activeSign===null?' active':'');
+  allBtn.textContent = 'Alle';
+  allBtn.onclick = () => { activeSign=null; refreshBtns(); draw(); };
+  grid.appendChild(allBtn);
+
+  SIGN_LABELS.forEach((lbl,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'sol-btn' + (activeSign===i?' active':'');
+    btn.innerHTML = lbl.replace(/([+−])/g,'<span>$1</span>');
+    btn.title = `ε=(${SIGNS[i].join(',')})`;
+    btn.onclick = () => { activeSign=i; refreshBtns(); draw(); };
+    grid.appendChild(btn);
+  });
+}
+
+function refreshBtns() {
+  const btns = document.querySelectorAll('.sol-btn');
+  btns[0].classList.toggle('active', activeSign===null);
+  for (let i=0;i<8;i++) btns[i+1].classList.toggle('active', activeSign===i);
+}
+
+// ── APOLLONIUS SOLVER ─────────────────────────────────────────────────────────
+// Given three circles and sign vector eps=[±1,±1,±1],
+// find circle (cx,cy,r) tangent to each:
+//   dist(M, Mi) = r + eps[i]*ri   (eps[i]=+1: external, -1: internal)
+//
+// Strategy: algebraic / analytic solution.
+// Let di = r + eps[i]*ri  =>  |M - Mi|^2 = di^2
+// Expand: x²-2x·mxi+mxi²+y²-2y·myi+myi² = (r+ei·ri)²
+// Subtract equation 1 from 2 and 3:
+//   linear in x,y,r  =>  solve 2x2 for (x,y) as function of r,
+//   substitute back to get quadratic in r.
+
+function solveApollonius(c, eps) {
+  const [c1,c2,c3] = c;
+  const [e1,e2,e3] = eps;
+
+  // Eq i: (x-xi)²+(y-yi)² = (r+ei*ri)²
+  // => x²-2xi·x + xi² + y²-2yi·y + yi² = r²+2·ei·ri·r+ri²
+  // Subtract eq0 from eq1 and eq2:
+  // 2(x1-x0)x + 2(y1-y0)y + 2(e0r0-e1r1)r = x1²+y1²-r1² - (x0²+y0²-r0²) + ... wait let me redo properly
+
+  // Let fi(x,y,r) = (x-xi)²+(y-yi)²-(r+ei*ri)² = 0
+  // f1-f0=0 and f2-f0=0 give two linear equations in x,y,r
+
+  function linearEq(ca, ea, cb, eb) {
+    // fb - fa = 0
+    // (x-xb)²+(y-yb)² - (r+eb*rb)² - [(x-xa)²+(y-ya)² - (r+ea*ra)²] = 0
+    // expand:
+    // -2x(xb-xa) - 2y(yb-ya) + (xb²-xa²) + (yb²-ya²)
+    //   - (r+eb*rb)² + (r+ea*ra)² = 0
+    // -(r+eb*rb)²+(r+ea*ra)² = r²+2ea*ra*r+ea²ra² - r²-2eb*rb*r-eb²rb²
+    //   = 2(ea*ra-eb*rb)*r + (ra²-rb²)   [since ea²=eb²=1]
+    // so:
+    // -2(xb-xa)x - 2(yb-ya)y + 2(ea*ra-eb*rb)r + (xb²-xa²+yb²-ya²+ra²-rb²) = 0
+    const A = -2*(cb.cx - ca.cx);
+    const B = -2*(cb.cy - ca.cy);
+    const C = 2*(ea*ca.r - eb*cb.r);
+    const D = cb.cx**2 - ca.cx**2 + cb.cy**2 - ca.cy**2 + ca.r**2 - cb.r**2;
+    return {A,B,C,D}; // Ax + By + Cr = -D
+  }
+
+  const eq1 = linearEq(c1,e1,c2,e2); // from pair (0,1) but using c1,c2 labels
+  const eq2 = linearEq(c1,e1,c3,e3);
+
+  // eq1: A1 x + B1 y + C1 r = -D1
+  // eq2: A2 x + B2 y + C2 r = -D2
+  // Solve for x,y in terms of r:
+  // x = (alpha + beta*r), y = (gamma + delta*r)
+
+  const {A:A1,B:B1,C:C1,D:D1} = eq1;
+  const {A:A2,B:B2,C:C2,D:D2} = eq2;
+
+  const det = A1*B2 - A2*B1;
+  if (Math.abs(det) < 1e-8) return null; // degenerate
+
+  // x = ((-D1)*B2 - (-D2)*B1)/det + ((-C1)*B2 - (-C2)*B1)/det * r
+  const xConst = (-D1*B2 + D2*B1) / det;
+  const xR     = (-C1*B2 + C2*B1) / det;
+
+  // y = (A1*(-D2) - A2*(-D1))/det + (A1*(-C2) - A2*(-C1))/det * r
+  const yConst = (-A1*D2 + A2*D1) / det;
+  const yR     = (-A1*C2 + A2*C1) / det;
+
+  // substitute into eq0: (x-x0)²+(y-y0)²=(r+e0*r0)²
+  // (xConst + xR*r - x0)² + (yConst + yR*r - y0)² = (r + e0*r0)²
+  const x0=c1.cx, y0=c1.cy, r0=c1.r;
+  const px = xConst - x0; // constant part of (x - x0)
+  const qx = xR;           // r-coefficient
+  const py = yConst - y0;
+  const qy = yR;
+
+  // (px+qx*r)² + (py+qy*r)² = (r+e1*r0)²
+  // px²+2px*qx*r+qx²r² + py²+2py*qy*r+qy²r² = r²+2e1*r0*r+r0²
+  const qa = qx**2 + qy**2 - 1;
+  const qb = 2*px*qx + 2*py*qy - 2*e1*r0;
+  const qc = px**2 + py**2 - r0**2;
+
+  let solutions = [];
+
+  if (Math.abs(qa) < 1e-9) {
+    // linear
+    if (Math.abs(qb) > 1e-9) {
+      const r = -qc/qb;
+      if (r > -1e-4) solutions.push(r);
+    }
+  } else {
+    const disc = qb**2 - 4*qa*qc;
+    if (disc < 0) return null;
+    const sqrtD = Math.sqrt(Math.max(0,disc));
+    solutions = [(-qb+sqrtD)/(2*qa), (-qb-sqrtD)/(2*qa)];
+  }
+
+  const results = [];
+  for (const r of solutions) {
+    if (r < -1e-3) continue; // negative radius: invalid
+    const rr = Math.max(0, r);
+    const cx = xConst + xR*rr;
+    const cy = yConst + yR*rr;
+    // verify
+    let ok = true;
+    for (let i=0;i<3;i++) {
+      const dist = Math.hypot(cx-c[i].cx, cy-c[i].cy);
+      const expected = rr + eps[i]*c[i].r;
+      if (Math.abs(dist - expected) > 1.0) { ok=false; break; }
+    }
+    if (ok) results.push({cx,cy,r:rr});
+  }
+  return results.length ? results : null;
+}
+
+// ── CANVAS & DRAW ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// ── CONIC (HYPERBOLA) DRAWING ─────────────────────────────────────────────────
+// Draw the locus { P : |PF1| - |PF2| = c }
+// c = 0  → perpendicular bisector of F1F2
+// c ≠ 0  → one branch of a hyperbola with foci F1, F2
+//
+// Parametric form (local coords, centre at midpoint, x-axis along F1→F2):
+//   x_local = sign(c) · a · cosh(t)
+//   y_local = b · sinh(t)
+// where a = |c|/2,  b = sqrt(e²-a²),  e = |F1F2|/2
+//
+// Branch: c>0 → |PF1|>|PF2| → P closer to F2 → right branch (x_local>0)
+//         c<0 → |PF1|<|PF2| → P closer to F1 → left branch  (x_local<0)
+function drawConic(F1, F2, c, color) {
+  const dx = F2.cx - F1.cx, dy = F2.cy - F1.cy;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < 2) return;
+
+  const mx = (F1.cx+F2.cx)/2, my = (F1.cy+F2.cy)/2;
+  const ux = dx/dist, uy = dy/dist; // local x-axis (F1→F2)
+  const vx = -uy, vy = ux;          // local y-axis (perpendicular)
+  const e = dist/2;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+
+  if (Math.abs(c) < 0.5) {
+    // Perpendicular bisector
+    const len = Math.max(W, H) * 2;
+    ctx.moveTo(mx - vx*len, my - vy*len);
+    ctx.lineTo(mx + vx*len, my + vy*len);
+  } else {
+    const a = Math.abs(c) / 2;
+    if (a >= e - 0.1) { ctx.restore(); return; } // no real hyperbola
+    const b = Math.sqrt(Math.max(0, e*e - a*a));
+    const sgn = c > 0 ? 1 : -1;
+
+    // Adaptive t range: only render curve within ~3× canvas extent
+    const maxExt = Math.max(W, H) * 3;
+    const T = Math.min(6, Math.acosh(Math.max(1.01, maxExt / a)));
+    const STEPS = 300;
+    const CLIP  = Math.max(W, H) * 3;
+
+    let pen = false;
+    for (let i = 0; i <= STEPS; i++) {
+      const t  = -T + 2*T*i/STEPS;
+      const xl = sgn * a * Math.cosh(t);
+      const yl = b   * Math.sinh(t);
+      const px = mx + xl*ux + yl*vx;
+      const py = my + xl*uy + yl*vy;
+      const ok = px>-CLIP && px<W+CLIP && py>-CLIP && py<H+CLIP;
+      if (ok) { if (!pen) { ctx.moveTo(px,py); pen=true; } else ctx.lineTo(px,py); }
+      else      pen = false;
+    }
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  // Scharfe Darstellung auf hochauflösenden Displays
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width  = Math.round(w*dpr);
+  canvas.height = Math.round(h*dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Beim Drehen des Geräts die Konstellation ähnlich abbilden (zentriert, gleichmäßig skaliert)
+  if (circles && W && H) {
+    const s = Math.min(w, h) / Math.min(W, H);
+    for (const c of circles) {
+      c.cx = w/2 + (c.cx - W/2)*s;
+      c.cy = h/2 + (c.cy - H/2)*s;
+      c.r *= s;
+    }
+  }
+  W = w; H = h;
+  if (!circles) circles = defaultCircles();
+  draw();
+}
+
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  // subtle grid
+  ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
+  const GRID=60;
+  for (let x=0;x<W;x+=GRID) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0;y<H;y+=GRID) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Draw Apollonius solutions
+  let solCount = 0, badCount = 0;
+  const indicesToDraw = activeSign!==null ? [activeSign] : SIGNS.map((_,i)=>i);
+
+  for (const idx of indicesToDraw) {
+    const eps = SIGNS[idx];
+    const sols = solveApollonius(circles, eps);
+    const col = activeSign!==null ? SOL_COLOR : SOL_COLORS[idx];
+    if (sols && sols.length) {
+      for (const s of sols) {
+        if (s.r > 5000) continue; // skip absurdly large
+        ctx.beginPath();
+        ctx.arc(s.cx, s.cy, s.r, 0, Math.PI*2);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = activeSign!==null ? 2.5 : 1.5;
+        ctx.globalAlpha = 0.85;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // center dot
+        ctx.beginPath(); ctx.arc(s.cx,s.cy,3,0,Math.PI*2);
+        ctx.fillStyle=col; ctx.fill();
+        solCount++;
+      }
+    } else {
+      badCount++;
+    }
+  }
+
+  // Draw hyperbolas (if toggled and a specific signature is active)
+  if (showHyperbolas && activeSign !== null) {
+    const eps = SIGNS[activeSign];
+    // Pairs: (0,1), (0,2), (1,2). Colour = colour of the OTHER circle.
+    const pairs = [
+      { i:0, j:1, col: COLORS[2] },
+      { i:0, j:2, col: COLORS[1] },
+      { i:1, j:2, col: COLORS[0] },
+    ];
+    for (const {i, j, col} of pairs) {
+      const c_val = eps[i]*circles[i].r - eps[j]*circles[j].r;
+      drawConic(circles[i], circles[j], c_val, col);
+    }
+  }
+
+  // Draw the three input circles
+  circles.forEach((c,i) => {
+    const col = COLORS[i];
+    // filled with very low alpha
+    ctx.beginPath(); ctx.arc(c.cx,c.cy,c.r,0,Math.PI*2);
+    ctx.fillStyle=col.replace(')',',0.07)').replace('rgb','rgba').replace('#','rgba(').replace('rgba(','rgba(');
+    // simpler:
+    ctx.save();
+    ctx.globalAlpha=0.08;
+    ctx.fillStyle=col;
+    ctx.fill();
+    ctx.restore();
+
+    // stroke
+    ctx.beginPath(); ctx.arc(c.cx,c.cy,c.r,0,Math.PI*2);
+    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+
+    // center cross
+    const S=6;
+    ctx.strokeStyle=col; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(c.cx-S,c.cy); ctx.lineTo(c.cx+S,c.cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(c.cx,c.cy-S); ctx.lineTo(c.cx,c.cy+S); ctx.stroke();
+
+    // label
+    ctx.fillStyle=col; ctx.font='bold 13px Inter,system-ui'; ctx.textAlign='left';
+    ctx.fillText(`k${i+1}  r=${Math.round(c.r)}`, c.cx+c.r*0.7+6, c.cy-c.r*0.7);
+
+
+  });
+
+  // status
+  const found = indicesToDraw.length - badCount;
+  document.getElementById('status').textContent =
+    activeSign!==null
+      ? `Lösung (${SIGN_LABELS[activeSign]}): ${solCount>0?solCount+' Kreis(e) gefunden':'keine reelle Lösung'}`
+      : `${solCount} von ${indicesToDraw.length*2} möglichen Lösungen`;
+}
+
+// ── HIT TESTING ───────────────────────────────────────────────────────────────
+const HIT_CENTER = 16;   // px radius for center grab
+const HIT_RING   = 12;   // px tolerance for ring/handle grab
+
+function hitTest(mx, my, touch) {
+  const k = touch ? 1.8 : 1;   // Finger sind ungenauer als die Maus
+  // Check center grabs
+  for (let i=0;i<3;i++) {
+    const c=circles[i];
+    if (Math.hypot(mx-c.cx,my-c.cy)<HIT_CENTER*k) return {type:'center',idx:i};
+  }
+  // Check ring hover (anywhere on circumference)
+  for (let i=0;i<3;i++) {
+    const c=circles[i];
+    const d=Math.abs(Math.hypot(mx-c.cx,my-c.cy)-c.r);
+    if (d<HIT_RING*k) return {type:'radius',idx:i};
+  }
+  return null;
+}
+
+// ── MOUSE / TOUCH ─────────────────────────────────────────────────────────────
+function getPos(e) {
+  const rect=canvas.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  return {x:t.clientX-rect.left, y:t.clientY-rect.top};
+}
+
+canvas.addEventListener('mousedown', onDown);
+canvas.addEventListener('touchstart', e=>{e.preventDefault();onDown(e);},{passive:false});
+window.addEventListener('mousemove', onMove);
+window.addEventListener('touchmove', e=>{ if (drag) { e.preventDefault(); onMove(e); } },{passive:false});
+window.addEventListener('mouseup', onUp);
+window.addEventListener('touchend', onUp);
+window.addEventListener('touchcancel', onUp);
+canvas.addEventListener('mousemove', e=>{
+  const pos=getPos(e);
+  const h=hitTest(pos.x,pos.y);
+  canvas.style.cursor=h?(h.type==='center'?'move':'ew-resize'):'default';
+});
+
+function onDown(e) {
+  const pos=getPos(e);
+  const h=hitTest(pos.x,pos.y,!!e.touches);
+  if (!h) return;
+  const c=circles[h.idx];
+  drag={
+    type:h.type, idx:h.idx,
+    ox:pos.x, oy:pos.y,
+    startCx:c.cx, startCy:c.cy, startR:c.r
+  };
+}
+
+function onMove(e) {
+  if (!drag) return;
+  const pos=getPos(e);
+  const c=circles[drag.idx];
+  if (drag.type==='center') {
+    c.cx = drag.startCx + (pos.x-drag.ox);
+    c.cy = drag.startCy + (pos.y-drag.oy);
+  } else {
+    // radius: distance from center to mouse
+    const r=Math.hypot(pos.x-c.cx, pos.y-c.cy);
+    c.r=Math.max(10,r);
+  }
+  draw();
+}
+
+function onUp() { drag=null; }
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  circles=defaultCircles(); draw();
+});
+
+// ── HYPERBOLA TOGGLE ──────────────────────────────────────────────────────────
+document.getElementById('hyperBtn').addEventListener('click', () => {
+  showHyperbolas = !showHyperbolas;
+  document.getElementById('hyperBtn').classList.toggle('active', showHyperbolas);
+  document.getElementById('hyperLegend').style.display = showHyperbolas ? '' : 'none';
+  draw();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildSolGrid();
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+// ── APP-VERHALTEN ─────────────────────────────────────────────────────────────
+// Seitenzoom per Zwei-Finger-Geste verhindern
+document.addEventListener('gesturestart', e => e.preventDefault());
+if (window.matchMedia('(hover: none)').matches) {
+  document.getElementById('hint').textContent = 'Mittelpunkt ziehen verschiebt, Rand ziehen ändert den Radius';
+}
+// Im Querformat auf dem Smartphone steht der Status in der Fußzeile
+const landscapePhone = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
+function placeStatus() {
+  const st = document.getElementById('status');
+  (landscapePhone.matches ? document.querySelector('.legend') : document.querySelector('header')).appendChild(st);
+}
+landscapePhone.addEventListener('change', placeStatus);
+placeStatus();
+// Service Worker für den Offline-Betrieb (nur über HTTPS oder localhost)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
